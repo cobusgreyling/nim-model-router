@@ -1,0 +1,75 @@
+# Task → NVIDIA NIM model mapping.
+# Override via ROUTER_CONFIG or --config.
+# Model IDs: https://build.nvidia.com/models
+
+tasks:
+  fast:
+    model: meta/llama-3.1-8b-instruct
+    description: Quick chat, classification, short Q&A
+    priority: 1
+
+  agentic:
+    model: nvidia/nemotron-3-super-120b-a12b
+    description: Tool use, multi-step agents, function calling
+    priority: 2
+    extra_body:
+      enable_thinking: true
+      reasoning_budget: 4096
+
+  reasoning:
+    model: nvidia/nemotron-3-ultra-550b-a55b
+    description: Deep reasoning, complex analysis, hard problems
+    priority: 3
+    extra_body:
+      enable_thinking: true
+      reasoning_budget: 8192
+
+  long_context:
+    model: nvidia/nemotron-3-super-120b-a12b
+    description: Large documents, synthesis over long inputs
+    priority: 2
+
+  coding:
+    model: nvidia/llama-3.3-nemotron-super-49b-v1.5
+    description: Code generation, debugging, refactoring
+    priority: 2
+
+  embedding:
+    model: nvidia/llama-nemotron-embed-1b-v2
+    description: Text embeddings for RAG and semantic search
+    priority: 1
+
+  rerank:
+    model: nvidia/llama-nemotron-rerank-1b-v2
+    description: Rerank retrieved passages for RAG
+    priority: 1
+
+aliases:
+  nim-router/auto: auto
+  nim-router/fast: fast
+  nim-router/agentic: agentic
+  nim-router/reasoning: reasoning
+  nim-router/long-context: long_context
+  nim-router/coding: coding
+
+classifier:
+  long_context_token_threshold: 12000
+  reasoning_keywords:
+    - prove
+    - theorem
+    - step by step
+    - analyze deeply
+    - trade-off
+    - root cause
+  coding_keywords:
+    - "```"
+    - "def "
+    - "function "
+    - "import "
+    - "class "
+    - refactor
+    - debug
+    - typescript
+    - python
+    - rust
+  fast_max_chars: 120

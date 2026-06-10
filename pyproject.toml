@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nim-model-router"
+version = "0.1.0"
+description = "OpenAI-compatible proxy that routes requests to the best NVIDIA NIM model by task"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "Cobus Greyling", email = "7868717+cobusgreyling@users.noreply.github.com" }]
+keywords = ["nvidia", "nim", "llm", "router", "proxy", "openai"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "fastapi>=0.115",
+  "httpx>=0.27",
+  "pydantic>=2.6",
+  "pydantic-settings>=2.2",
+  "pyyaml>=6.0",
+  "rich>=13.7",
+  "typer>=0.12",
+  "uvicorn[standard]>=0.30",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "ruff>=0.4"]
+
+[project.urls]
+Homepage = "https://github.com/cobusgreyling/nim-model-router"
+Repository = "https://github.com/cobusgreyling/nim-model-router"
+"Bug Tracker" = "https://github.com/cobusgreyling/nim-model-router/issues"
+
+[project.scripts]
+nim-router = "nim_model_router.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nim_model_router"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/nim_model_router", "config", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
