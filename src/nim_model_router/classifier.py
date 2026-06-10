@@ -151,9 +151,7 @@ def classify_request(
                 reason=f"system prompt matched coding keyword '{system_kw}'",
                 confidence=max(0.85, system_score),
             )
-            return _maybe_apply_policies(
-                result, policies_registry, probe, text, estimate_tokens
-            )
+            return _maybe_apply_policies(result, policies_registry, probe, text, estimate_tokens)
 
     if config.plugin_classifier:
         plugin = _load_plugin_classifier(config.plugin_classifier)

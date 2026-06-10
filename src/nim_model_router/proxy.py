@@ -70,9 +70,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     if settings.router_cors_origins:
         origins = [
-            origin.strip()
-            for origin in settings.router_cors_origins.split(",")
-            if origin.strip()
+            origin.strip() for origin in settings.router_cors_origins.split(",") if origin.strip()
         ]
         app.add_middleware(
             CORSMiddleware,
