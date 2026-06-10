@@ -2,6 +2,12 @@ from __future__ import annotations
 
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
+COST_TOTAL = Counter(
+    "nim_router_estimated_cost_usd_total",
+    "Estimated upstream request cost in USD",
+    ["endpoint", "task", "model"],
+)
+
 REQUESTS_TOTAL = Counter(
     "nim_router_requests_total",
     "Total proxied requests",
@@ -35,6 +41,7 @@ def record_request(
     latency_seconds: float,
     upstream_latency_seconds: float | None = None,
     fallback_used: bool = False,
+    estimated_cost_usd: float | None = None,
 ) -> None:
     REQUESTS_TOTAL.labels(
         endpoint=endpoint,
@@ -47,6 +54,8 @@ def record_request(
         UPSTREAM_LATENCY.labels(endpoint=endpoint, model=model).observe(upstream_latency_seconds)
     if fallback_used:
         FALLBACKS_TOTAL.labels(endpoint=endpoint, model=model).inc()
+    if estimated_cost_usd is not None:
+        COST_TOTAL.labels(endpoint=endpoint, task=task, model=model).inc(estimated_cost_usd)
 
 
 def metrics_response() -> tuple[bytes, str]:

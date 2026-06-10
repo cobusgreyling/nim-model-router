@@ -162,6 +162,8 @@ Every proxied response includes routing metadata:
 | `X-NIM-Routed-Model` | `nvidia/nemotron-3-super-120b-a12b` |
 | `X-NIM-Router-Reason` | `request includes tool definitions` |
 | `X-NIM-Router-Confidence` | `0.950` |
+| `X-NIM-Fallback-Used` | `false` |
+| `X-NIM-Estimated-Cost-USD` | `0.00000750` |
 
 ```bash
 # Live stats
@@ -200,6 +202,7 @@ Set `ROUTER_LOG_PATH=data/router.log.jsonl` to persist request logs.
 | `ENABLE_PROMETHEUS` | `true` | Expose `/metrics` |
 | `HEALTH_CHECK_UPSTREAM` | `false` | Include upstream status in `/health` |
 | `MAX_REQUEST_BODY_BYTES` | `10485760` | Max request body size |
+| `ROUTER_CORS_ORIGINS` | — | Comma-separated CORS origins for browser clients |
 
 ## Customizing models
 

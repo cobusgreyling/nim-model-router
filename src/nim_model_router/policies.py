@@ -4,6 +4,13 @@ from typing import Any
 
 from nim_model_router.types import ClassificationResult, Registry, RoutePolicies, TaskType
 
+EXPENSIVE_TASKS = {
+    TaskType.AGENTIC,
+    TaskType.REASONING,
+    TaskType.LONG_CONTEXT,
+    TaskType.CODING,
+}
+
 
 def apply_policies(
     result: ClassificationResult,
@@ -37,11 +44,11 @@ def apply_policies(
     if (
         policies.prefer_fast_when_uncertain
         and result.confidence < policies.uncertain_confidence_threshold
-        and result.task == TaskType.AGENTIC
+        and result.task in EXPENSIVE_TASKS
     ):
         return ClassificationResult(
             task=TaskType.GENERAL,
-            reason="policy: low confidence; prefer general tier",
+            reason="policy: low confidence; prefer cheaper general tier",
             confidence=result.confidence,
         )
 

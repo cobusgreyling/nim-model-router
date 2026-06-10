@@ -4,6 +4,7 @@ import importlib
 import json
 import re
 from collections.abc import Callable
+from functools import lru_cache
 from importlib.metadata import entry_points
 from typing import Any
 
@@ -16,12 +17,25 @@ TokenEstimator = Callable[[str], int]
 PluginClassifier = Callable[..., ClassificationResult]
 
 
+@lru_cache(maxsize=1)
+def _token_encoder():
+    return tiktoken.get_encoding("cl100k_base")
+
+
 def _default_token_estimator(text: str) -> int:
     try:
-        encoder = tiktoken.get_encoding("cl100k_base")
-        return max(1, len(encoder.encode(text)))
+        return max(1, len(_token_encoder().encode(text)))
     except Exception:
         return max(1, len(text) // 4)
+
+
+def _parse_llm_classifier_json(content: str) -> dict[str, Any]:
+    stripped = content.strip()
+    if stripped.startswith("```"):
+        stripped = re.sub(r"^```(?:json)?\s*", "", stripped, flags=re.IGNORECASE)
+        stripped = re.sub(r"\s*```$", "", stripped)
+    data = json.loads(stripped)
+    return data if isinstance(data, dict) else {}
 
 
 def _flatten_messages(messages: list[dict[str, Any]] | None) -> str:
@@ -43,6 +57,25 @@ def _flatten_messages(messages: list[dict[str, Any]] | None) -> str:
                     parts.append("[image]")
                 elif block_type == "input_audio":
                     parts.append("[audio]")
+    return "\n".join(parts)
+
+
+def _system_text(messages: list[dict[str, Any]] | None) -> str:
+    if not messages:
+        return ""
+    parts: list[str] = []
+    for message in messages:
+        if message.get("role") != "system":
+            continue
+        content = message.get("content", "")
+        if isinstance(content, str):
+            parts.append(content)
+        elif isinstance(content, list):
+            parts.extend(
+                str(block.get("text", ""))
+                for block in content
+                if isinstance(block, dict) and block.get("type") == "text"
+            )
     return "\n".join(parts)
 
 
@@ -106,8 +139,21 @@ def classify_request(
 
     text = input_text if input_text is not None else _flatten_messages(messages)
     user_text = _last_user_text(messages) if messages else (input_text or "")
+    system_text = _system_text(messages) if messages else ""
     probe = user_text or text
     lowered = probe.lower()
+
+    if system_text:
+        system_score, system_kw = _keyword_score(system_text, config.coding_keywords)
+        if system_kw:
+            result = ClassificationResult(
+                task=TaskType.CODING,
+                reason=f"system prompt matched coding keyword '{system_kw}'",
+                confidence=max(0.85, system_score),
+            )
+            return _maybe_apply_policies(
+                result, policies_registry, probe, text, estimate_tokens
+            )
 
     if config.plugin_classifier:
         plugin = _load_plugin_classifier(config.plugin_classifier)
@@ -285,7 +331,10 @@ async def classify_with_llm(
         max_tokens=120,
     )
     content = response.choices[0].message.content or ""
-    data = json.loads(content)
+    try:
+        data = _parse_llm_classifier_json(content)
+    except (json.JSONDecodeError, TypeError):
+        return None
     task_name = str(data.get("task", "general")).lower().replace("-", "_")
     try:
         task = TaskType(task_name)

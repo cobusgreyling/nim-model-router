@@ -5,6 +5,7 @@ from typing import Any
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from nim_model_router import __version__
@@ -17,6 +18,7 @@ from nim_model_router.client import (
     safe_json_loads,
 )
 from nim_model_router.config import Settings, load_registry
+from nim_model_router.cost import estimate_request_cost
 from nim_model_router.logging_store import RouteLogStore, Timer
 from nim_model_router.metrics import metrics_response, record_request
 from nim_model_router.policies import validate_registry_policies
@@ -66,13 +68,36 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     if settings.router_api_key:
         app.add_middleware(RouterAuthMiddleware, router_api_key=settings.router_api_key)
 
-    def _routing_headers(decision) -> dict[str, str]:
-        return {
+    if settings.router_cors_origins:
+        origins = [
+            origin.strip()
+            for origin in settings.router_cors_origins.split(",")
+            if origin.strip()
+        ]
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
+    def _routing_headers(
+        decision,
+        *,
+        fallback_used: bool = False,
+        estimated_cost_usd: float | None = None,
+    ) -> dict[str, str]:
+        headers = {
             "X-NIM-Routed-Task": decision.task.value,
             "X-NIM-Routed-Model": decision.model,
             "X-NIM-Router-Reason": decision.reason,
             "X-NIM-Router-Confidence": f"{decision.confidence:.3f}",
+            "X-NIM-Fallback-Used": "true" if fallback_used else "false",
         }
+        if estimated_cost_usd is not None:
+            headers["X-NIM-Estimated-Cost-USD"] = f"{estimated_cost_usd:.8f}"
+        return headers
 
     async def _read_payload(request: Request) -> dict[str, Any]:
         raw = await request.body()
@@ -111,10 +136,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         fallback_used: bool,
         prompt_tokens: int | None = None,
         completion_tokens: int | None = None,
+        estimated_cost_usd: float | None = None,
     ) -> None:
         upstream_ms = upstream_timer.elapsed_ms if upstream_timer else None
         if upstream_ms is not None:
             state.router.update_model_latency(decision.model, upstream_ms)
+
+        if estimated_cost_usd is None:
+            estimated_cost_usd = estimate_request_cost(
+                state.registry,
+                task=decision.task.value,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+            )
 
         state.log_store.append(
             RouteLogEntry(
@@ -132,6 +166,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 upstream_latency_ms=upstream_ms,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
+                estimated_cost_usd=estimated_cost_usd,
                 fallback_used=fallback_used,
             )
         )
@@ -145,6 +180,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 latency_seconds=timer.elapsed_ms / 1000,
                 upstream_latency_seconds=upstream_ms / 1000 if upstream_ms else None,
                 fallback_used=fallback_used,
+                estimated_cost_usd=estimated_cost_usd,
             )
 
     @app.get("/health")
@@ -235,7 +271,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             upstream_timer.stop()
 
-        routing_headers = _routing_headers(decision)
+        routing_headers = _routing_headers(decision, fallback_used=fallback_used)
 
         if streamed:
 
@@ -287,6 +323,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         timer.stop()
         content = upstream_response.json() if upstream_response.content else {}
         prompt_tokens, completion_tokens = extract_usage(content)
+        estimated_cost_usd = estimate_request_cost(
+            state.registry,
+            task=decision.task.value,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
         _record(
             endpoint="chat",
             decision=decision,
@@ -298,11 +340,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             fallback_used=fallback_used,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
+            estimated_cost_usd=estimated_cost_usd,
         )
         return JSONResponse(
             content=content,
             status_code=upstream_response.status_code,
-            headers=routing_headers,
+            headers=_routing_headers(
+                decision,
+                fallback_used=fallback_used,
+                estimated_cost_usd=estimated_cost_usd,
+            ),
         )
 
     @app.post("/v1/embeddings")
@@ -330,7 +377,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         upstream_timer = Timer()
         upstream_timer.stop()
         timer.stop()
-        routing_headers = _routing_headers(decision)
+        routing_headers = _routing_headers(decision, fallback_used=fallback_used)
         content = upstream_response.json() if upstream_response.content else {}
         _record(
             endpoint="embeddings",
@@ -369,7 +416,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         upstream_timer = Timer()
         upstream_timer.stop()
         timer.stop()
-        routing_headers = _routing_headers(decision)
+        routing_headers = _routing_headers(decision, fallback_used=fallback_used)
         content = upstream_response.json() if upstream_response.content else {}
         _record(
             endpoint="rerank",

@@ -96,4 +96,5 @@ class RouteLogEntry(BaseModel):
     upstream_latency_ms: float | None = None
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
+    estimated_cost_usd: float | None = None
     fallback_used: bool = False

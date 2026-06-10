@@ -44,3 +44,40 @@ async def test_retry_on_429():
     response, _ = await client.embedding({"input": "hello"}, decision)
     assert response.status_code == 200
     assert route.call_count == 2
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_chat_fallback_on_429():
+    agentic_model = "nvidia/nemotron-3-super-120b-a12b"
+    general_model = "nvidia/nemotron-3-nano-30b-a3b"
+
+    respx.post("https://integrate.api.nvidia.com/v1/chat/completions").mock(
+        side_effect=[
+            httpx.Response(429, json={"error": "rate limit"}),
+            httpx.Response(
+                200,
+                json={"choices": [{"message": {"role": "assistant", "content": "ok"}}]},
+            ),
+        ]
+    )
+
+    settings = Settings(
+        nvidia_api_key="k",
+        upstream_max_retries=1,
+        upstream_retry_backoff_seconds=0.01,
+    )
+    client = NimClient(settings)
+    decision = RouteDecision(
+        task=TaskType.AGENTIC,
+        model=agentic_model,
+        reason="test",
+        fallback_models=[general_model],
+    )
+    response, final_decision, fallback_used = await client.chat_completion(
+        {"messages": [{"role": "user", "content": "hello"}]},
+        decision,
+    )
+    assert response.status_code == 200
+    assert fallback_used is True
+    assert final_decision.model == general_model

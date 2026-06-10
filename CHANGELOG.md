@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.0] - 2026-06-10
+
+### Added
+- Cost estimation from token usage (`X-NIM-Estimated-Cost-USD` header, stats, Prometheus)
+- `X-NIM-Fallback-Used` response header for observability
+- Optional CORS support via `ROUTER_CORS_ORIGINS`
+- System-prompt coding detection in the classifier
+- 429 rate-limit fallback to the next model in the chain
+
+### Changed
+- Low-confidence routing now downgrades all expensive tasks (not just agentic) to `general`
+- Cached tiktoken encoder for faster repeated token estimation
+- LLM classifier tolerates markdown-wrapped JSON responses
+- Expanded coding and reasoning keyword lists in `models.yaml`
+
 ## [0.2.0] - 2026-06-10
 
 ### Added

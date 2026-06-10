@@ -34,6 +34,7 @@ class RouteLogStore:
                 "avg_latency_ms": 0.0,
                 "avg_confidence": 0.0,
                 "fallback_rate": 0.0,
+                "estimated_cost_usd": 0.0,
             }
 
         by_task = Counter(entry.task for entry in entries)
@@ -44,6 +45,7 @@ class RouteLogStore:
             entry.upstream_latency_ms for entry in entries if entry.upstream_latency_ms is not None
         ]
         fallback_count = sum(1 for entry in entries if entry.fallback_used)
+        total_cost = sum(entry.estimated_cost_usd or 0.0 for entry in entries)
         model_latency: dict[str, float] = {}
         model_counts: Counter[str] = Counter()
         for entry in entries:
@@ -65,6 +67,7 @@ class RouteLogStore:
             if avg_upstream
             else None,
             "fallback_rate": round(fallback_count / len(entries), 4),
+            "estimated_cost_usd": round(total_cost, 8),
             "model_latency_ms": model_latency,
             "recent": [entry.model_dump() for entry in entries[-10:]],
         }

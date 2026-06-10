@@ -75,6 +75,20 @@ def test_rerank_payload_detection():
     assert result.task == TaskType.RERANK
 
 
+def test_system_prompt_coding_keyword():
+    registry = load_registry()
+    result = classify_request(
+        messages=[
+            {"role": "system", "content": "You are a Python coding assistant."},
+            {"role": "user", "content": "Help me with this task"},
+        ],
+        config=registry.classifier,
+        policies_registry=registry,
+    )
+    assert result.task == TaskType.CODING
+    assert "system prompt" in result.reason
+
+
 def test_ambiguous_defaults_general():
     registry = load_registry()
     result = classify_request(

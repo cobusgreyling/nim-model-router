@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     enable_prometheus: bool = True
     max_request_body_bytes: int = 10_485_760
     health_check_upstream: bool = False
+    router_cors_origins: str = ""
 
 
 def load_registry(path: Path | None = None) -> Registry:

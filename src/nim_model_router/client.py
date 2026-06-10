@@ -11,6 +11,7 @@ from nim_model_router.config import Settings
 from nim_model_router.types import RouteDecision
 
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+FALLBACK_STATUS = {429, 500, 502, 503, 504}
 
 
 def _merge_extra_body(payload: dict[str, Any], decision: RouteDecision) -> dict[str, Any]:
@@ -125,8 +126,8 @@ class NimClient:
                 stream=stream,
                 timeout=timeout,
             )
-            if response.status_code < 500 or index == len(models_to_try) - 1:
-                fallback_used = index > 0 and response.status_code < 500
+            if response.status_code not in FALLBACK_STATUS or index == len(models_to_try) - 1:
+                fallback_used = index > 0 and response.status_code not in FALLBACK_STATUS
                 if fallback_used:
                     final_decision = decision.model_copy(
                         update={

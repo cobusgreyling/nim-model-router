@@ -113,6 +113,8 @@ def test_chat_completion_proxy(settings):
     assert route.called
     assert response.headers["X-NIM-Routed-Task"] == "fast"
     assert response.headers["X-NIM-Router-Confidence"]
+    assert response.headers["X-NIM-Fallback-Used"] == "false"
+    assert response.headers["X-NIM-Estimated-Cost-USD"]
 
 
 @respx.mock
@@ -122,6 +124,8 @@ def test_chat_completion_fallback(settings):
 
     respx.post("https://integrate.api.nvidia.com/v1/chat/completions").mock(
         side_effect=[
+            httpx.Response(503, json={"error": "unavailable"}),
+            httpx.Response(503, json={"error": "unavailable"}),
             httpx.Response(503, json={"error": "unavailable"}),
             httpx.Response(
                 200,
@@ -145,6 +149,7 @@ def test_chat_completion_fallback(settings):
 
     assert response.status_code == 200
     assert response.headers["X-NIM-Routed-Model"] in {agentic_model, general_model}
+    assert response.headers["X-NIM-Fallback-Used"] == "true"
 
 
 @respx.mock
@@ -218,6 +223,49 @@ def test_auth_middleware(settings):
             json={"model": "nim-router/fast", "messages": [{"role": "user", "content": "hi"}]},
         )
         assert allowed.status_code == 200
+
+
+@respx.mock
+def test_router_stats_includes_cost(settings):
+    route = respx.post("https://integrate.api.nvidia.com/v1/chat/completions").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"role": "assistant", "content": "ok"}}],
+                "usage": {"prompt_tokens": 1000, "completion_tokens": 500},
+            },
+        )
+    )
+
+    app = create_app(settings)
+    with TestClient(app) as test_client:
+        response = test_client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "nim-router/fast",
+                "messages": [{"role": "user", "content": "hello"}],
+            },
+        )
+        assert response.status_code == 200
+        assert route.called
+        stats = test_client.get("/v1/router/stats").json()
+
+    assert stats["total_requests"] >= 1
+    assert stats["estimated_cost_usd"] > 0
+
+
+def test_cors_headers(settings):
+    app = create_app(settings.model_copy(update={"router_cors_origins": "http://localhost:3000"}))
+    with TestClient(app) as test_client:
+        response = test_client.options(
+            "/v1/chat/completions",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
 
 
 def test_request_body_too_large(settings):

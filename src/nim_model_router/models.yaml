@@ -95,6 +95,9 @@ classifier:
     - analyze deeply
     - trade-off
     - root cause
+    - derive
+    - mathematical proof
+    - compare and contrast
   coding_keywords:
     - "```"
     - "def "
@@ -106,6 +109,11 @@ classifier:
     - typescript
     - python
     - rust
+    - golang
+    - kubernetes
+    - sql query
+    - unit test
+    - code review
   rerank_keywords:
     - rerank
     - rank these
