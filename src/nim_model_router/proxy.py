@@ -90,6 +90,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         }
 
         if streamed:
+
             async def event_stream():
                 upstream_timer = Timer()
                 try:

@@ -19,9 +19,7 @@ def default_registry_path() -> Path:
         return bundled
     if DEV_REGISTRY_PATH.exists():
         return DEV_REGISTRY_PATH
-    return Path(
-        str(resources.files("nim_model_router").joinpath("models.yaml"))
-    )
+    return Path(str(resources.files("nim_model_router").joinpath("models.yaml")))
 
 
 DEFAULT_REGISTRY_PATH = default_registry_path()

@@ -33,9 +33,7 @@ class RouteLogStore:
         by_model = Counter(entry.model for entry in entries)
         avg_latency = sum(entry.latency_ms for entry in entries) / len(entries)
         avg_upstream = [
-            entry.upstream_latency_ms
-            for entry in entries
-            if entry.upstream_latency_ms is not None
+            entry.upstream_latency_ms for entry in entries if entry.upstream_latency_ms is not None
         ]
         return {
             "total_requests": len(entries),

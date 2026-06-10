@@ -159,7 +159,7 @@ def classify_cmd(
 @app.command("client-example")
 def client_example_cmd() -> None:
     """Print a minimal OpenAI SDK example for this router."""
-    example = '''
+    example = """
 from openai import OpenAI
 
 client = OpenAI(
@@ -181,7 +181,7 @@ response = client.chat.completions.create(
 )
 
 # Or via header (curl: -H "X-NIM-Task: reasoning")
-'''
+"""
     console.print(example)
 
 

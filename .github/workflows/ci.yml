@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install package (dev extras)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Ruff lint
+        run: ruff check src tests
+
+      - name: Ruff format check
+        run: ruff format --check src tests
+
+      - name: Run tests
+        run: pytest -q --tb=short
+
+      - name: CLI smoke test
+        run: |
+          nim-router --version
+          nim-router route "refactor this Python function"
+          nim-router route "Hi"
+          nim-router models
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build sdist/wheel
+        run: |
+          pip install build
+          python -m build
+          ls -l dist/
+
+      - name: Check install from wheel
+        run: |
+          pip install dist/*.whl
+          python -c "import nim_model_router as m; print('Installed version:', m.__version__)"
+          nim-router --version
