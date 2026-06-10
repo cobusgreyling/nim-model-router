@@ -1,0 +1,15 @@
+services:
+  nim-router:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      ROUTER_HOST: 0.0.0.0
+      ROUTER_PORT: 8080
+      ENABLE_PROMETHEUS: "true"
+    volumes:
+      - ./src/nim_model_router/models.yaml:/app/src/nim_model_router/models.yaml:ro
+      - ./data:/app/data
+    restart: unless-stopped

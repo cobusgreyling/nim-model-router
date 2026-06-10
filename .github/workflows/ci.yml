@@ -33,14 +33,16 @@ jobs:
       - name: Ruff format check
         run: ruff format --check src tests
 
-      - name: Run tests
-        run: pytest -q --tb=short
+      - name: Run tests with coverage
+        run: pytest -q --tb=short --cov=nim_model_router --cov-report=term-missing
 
       - name: CLI smoke test
+        env:
+          TERM: dumb
         run: |
           nim-router --version
-          nim-router route "refactor this Python function"
-          nim-router route "Hi"
+          nim-router route "refactor this Python function" --json
+          nim-router route "Hi" --json
           nim-router models
 
   package:

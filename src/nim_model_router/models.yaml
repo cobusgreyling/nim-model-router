@@ -1,5 +1,5 @@
-# Task → NVIDIA NIM model mapping.
-# Override via ROUTER_CONFIG or --config.
+# Task → NVIDIA NIM model mapping (single source of truth).
+# Override via ROUTER_CONFIG or nim-router serve --config.
 # Model IDs: https://build.nvidia.com/models
 
 tasks:
@@ -7,50 +7,84 @@ tasks:
     model: meta/llama-3.1-8b-instruct
     description: Quick chat, classification, short Q&A
     priority: 1
+    cost_per_1m_tokens: 0.05
+    fallbacks: []
+
+  general:
+    model: nvidia/nemotron-3-nano-30b-a3b
+    description: General-purpose chat when confidence is low
+    priority: 2
+    cost_per_1m_tokens: 0.20
+    fallbacks:
+      - fast
 
   agentic:
     model: nvidia/nemotron-3-super-120b-a12b
     description: Tool use, multi-step agents, function calling
-    priority: 2
+    priority: 3
+    cost_per_1m_tokens: 1.50
     extra_body:
       enable_thinking: true
       reasoning_budget: 4096
+    fallbacks:
+      - general
+      - fast
 
   reasoning:
     model: nvidia/nemotron-3-ultra-550b-a55b
     description: Deep reasoning, complex analysis, hard problems
-    priority: 3
+    priority: 4
+    cost_per_1m_tokens: 5.00
     extra_body:
       enable_thinking: true
       reasoning_budget: 8192
+    fallbacks:
+      - agentic
+      - general
 
   long_context:
     model: nvidia/nemotron-3-super-120b-a12b
     description: Large documents, synthesis over long inputs
-    priority: 2
+    priority: 3
+    cost_per_1m_tokens: 1.50
+    fallbacks:
+      - agentic
+      - general
 
   coding:
     model: nvidia/llama-3.3-nemotron-super-49b-v1.5
     description: Code generation, debugging, refactoring
-    priority: 2
+    priority: 3
+    cost_per_1m_tokens: 0.80
+    fallbacks:
+      - agentic
+      - general
 
   embedding:
     model: nvidia/llama-nemotron-embed-1b-v2
     description: Text embeddings for RAG and semantic search
     priority: 1
+    cost_per_1m_tokens: 0.02
+    fallbacks: []
 
   rerank:
     model: nvidia/llama-nemotron-rerank-1b-v2
     description: Rerank retrieved passages for RAG
     priority: 1
+    cost_per_1m_tokens: 0.02
+    endpoint: /ranking
+    fallbacks: []
 
 aliases:
   nim-router/auto: auto
   nim-router/fast: fast
+  nim-router/general: general
   nim-router/agentic: agentic
   nim-router/reasoning: reasoning
   nim-router/long-context: long_context
   nim-router/coding: coding
+  nim-router/embedding: embedding
+  nim-router/rerank: rerank
 
 classifier:
   long_context_token_threshold: 12000
@@ -72,4 +106,24 @@ classifier:
     - typescript
     - python
     - rust
+  rerank_keywords:
+    - rerank
+    - rank these
+    - most relevant
+    - top passages
+    - retrieve
   fast_max_chars: 120
+  use_llm_classifier: false
+  llm_classifier_model: meta/llama-3.1-8b-instruct
+
+policies:
+  max_prompt_tokens:
+    fast: 8000
+    general: 32000
+    coding: 64000
+  block_ultra_for_short_prompts: true
+  short_prompt_max_chars: 200
+  prefer_fast_when_uncertain: true
+  uncertain_confidence_threshold: 0.55
+
+latency_routing: true

@@ -1,0 +1,30 @@
+name: Bug report
+description: Report incorrect routing, proxy errors, or crashes
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        nim-router route "..." --json
+        curl http://127.0.0.1:8080/v1/router/dry-run ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: nim-router version
+      placeholder: 0.2.0

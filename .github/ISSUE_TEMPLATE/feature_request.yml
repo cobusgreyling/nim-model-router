@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest a routing rule, integration, or operational improvement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Routing / classifier
+        - Proxy / API
+        - Observability
+        - Docs / DX
+        - Other
