@@ -90,7 +90,13 @@ def models_cmd(
     table.add_column("Description")
 
     for alias, task_name in sorted(registry.aliases.items()):
-        task_cfg = registry.tasks[task_name]
+        if task_name == "auto":
+            table.add_row(alias, "(classifier decides)", "Auto-route by request content")
+            continue
+        task_cfg = registry.tasks.get(task_name)
+        if task_cfg is None:
+            table.add_row(alias, "(unknown task)", task_name)
+            continue
         table.add_row(alias, task_cfg.model, task_cfg.description)
 
     console.print(table)
