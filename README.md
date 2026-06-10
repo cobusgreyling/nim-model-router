@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="images/nim-router-header.jpg" alt="NIM Model Router" width="100%">
+</p>
+
 # NIM Model Router
 
 **OpenAI-compatible proxy that routes requests to the best NVIDIA NIM model by task.**
